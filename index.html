@@ -1,4 +1,5 @@
 <title>Turniergenerator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 :root{
   --bg:#F5F8F4;
@@ -220,6 +221,40 @@ tbody tr.roundhead td{background:var(--surface-2); font-weight:800; font-size:12
 .standings-grid table td, .standings-grid table th{padding:9px 10px;}
 .standings-grid table td.team{font-weight:800;}
 .standings-grid table td.num, .standings-grid table th.num{text-align:center; font-variant-numeric:tabular-nums;}
+
+@media (max-width:640px){
+  /* schedule: reflow the table into a stack of touch-friendly match cards */
+  .schedule-table thead{display:none;}
+  .schedule-table, .schedule-table tbody, .schedule-table tr, .schedule-table td{display:block; width:100%;}
+  .tablewrap{overflow-x:visible; border:none; background:none; box-shadow:none;}
+  .schedule-table{background:transparent;}
+  .schedule-table tbody tr:not(.roundhead){
+    background:var(--surface); border:1px solid var(--line); border-radius:12px;
+    box-shadow:var(--shadow); padding:4px 14px; margin-bottom:10px;
+  }
+  .schedule-table tbody tr.roundhead{
+    background:none; padding:16px 2px 6px; margin:0;
+  }
+  .schedule-table tbody tr:first-child.roundhead{padding-top:0;}
+  .schedule-table td{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:9px 0; border-bottom:1px dashed var(--line); text-align:right;
+  }
+  .schedule-table td:last-child{border-bottom:none;}
+  .schedule-table td::before{
+    content:attr(data-label); flex:none; text-align:left;
+    font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-dim); font-weight:800;
+  }
+  .schedule-table .matchup{justify-content:flex-end; min-width:0; text-align:right;}
+  .schedule-table .score-inputs{justify-content:flex-end;}
+
+  /* standings: tighter columns so all 9 fit without horizontal scroll */
+  .standings-grid table td, .standings-grid table th{padding:8px 5px; font-size:12.5px;}
+  .standings-grid table td.team{font-size:13px;}
+
+  .stepper button{width:38px; height:38px;}
+  .score-inputs input{width:40px; padding:9px 2px;}
+}
 .rankbadge{
   display:inline-flex; align-items:center; justify-content:center; width:20px;height:20px;border-radius:50%;
   font-size:11px; font-weight:800; background:var(--surface-2); color:var(--ink-dim);
@@ -1108,11 +1143,11 @@ function matchRow(m, isGroup, showGroupTag){
   else if(m.homeScore!=null && m.awayScore!=null) status = '<span class="status-pill done">beendet</span>';
   else status = '<span class="status-pill open">bevorstehend</span>';
   return '<tr>' +
-    '<td class="time-cell">'+formatTime(m.time)+'</td>' +
-    '<td><span class="field-pill">Feld '+m.field+'</span></td>' +
-    '<td>'+mu.html+(showGroupTag? ' <span class="field-pill" style="margin-left:6px;">Gr. '+m.group+'</span>':'')+'</td>' +
-    '<td>'+scoreInputsHtml(m, canPlay)+'</td>' +
-    '<td>'+status+'</td>' +
+    '<td class="time-cell" data-label="Zeit">'+formatTime(m.time)+'</td>' +
+    '<td data-label="Feld"><span class="field-pill">Feld '+m.field+'</span></td>' +
+    '<td data-label="Begegnung">'+mu.html+(showGroupTag? ' <span class="field-pill" style="margin-left:6px;">Gr. '+m.group+'</span>':'')+'</td>' +
+    '<td data-label="Resultat">'+scoreInputsHtml(m, canPlay)+'</td>' +
+    '<td data-label="Status">'+status+'</td>' +
     '</tr>';
 }
 
