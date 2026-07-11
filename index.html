@@ -398,6 +398,7 @@ document.addEventListener('focusout', function(e){
 });
 function attachLiveListeners(id){
   if(!fbAvailable) return;
+  fbDb.ref('tournaments/'+id+'/scores').off('value');
   fbDb.ref('tournaments/'+id+'/scores').on('value', function(snap){
     var scores = snap.val() || {};
     state.matches.forEach(function(m){
@@ -958,8 +959,10 @@ function renderSetup(){
     state.generated = true;
     state.editing = false;
     if(fbAvailable){
-      state.tournamentId = genTournamentId();
-      persistNewTournament().then(function(){
+      var isNew = !state.tournamentId;
+      if(isNew) state.tournamentId = genTournamentId();
+      var clearOldScores = isNew ? Promise.resolve() : fbDb.ref('tournaments/'+state.tournamentId+'/scores').remove();
+      clearOldScores.then(persistNewTournament).then(function(){
         history.replaceState(null, '', '?t='+state.tournamentId);
         attachLiveListeners(state.tournamentId);
       });
