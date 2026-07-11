@@ -191,13 +191,21 @@ thead th{
 tbody td{padding:10px 14px; border-bottom:1px solid var(--line); vertical-align:middle;}
 tbody tr:last-child td{border-bottom:none;}
 tbody tr.roundhead td{background:var(--surface-2); font-weight:800; font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-dim); padding:8px 14px;}
+tbody tr.roundhead.pause td{background:var(--accent-2-soft); color:var(--accent-2);}
+.pause-row{display:flex; align-items:center; justify-content:center; gap:10px; text-transform:none; letter-spacing:normal; font-size:13px;}
+.pause-row .stepper{background:var(--surface);}
 .time-cell{font-variant-numeric:tabular-nums; font-weight:700; white-space:nowrap;}
 .field-pill{
   display:inline-block; background:var(--surface-2); border:1px solid var(--line); border-radius:6px;
   padding:2px 8px; font-size:12px; font-weight:700; color:var(--ink-dim);
 }
-.matchup{display:flex; align-items:center; justify-content:center; gap:8px; font-weight:700; min-width:220px;}
-.matchup .vs{color:var(--ink-dim); font-weight:600; font-size:12px;}
+.matchup{
+  display:grid; grid-template-columns:1fr auto 1fr; align-items:center; column-gap:8px;
+  font-weight:700; width:100%; min-width:220px;
+}
+.matchup > *:first-child{justify-self:end; text-align:right;}
+.matchup > *:last-child{justify-self:start; text-align:left;}
+.matchup .vs{justify-self:center; color:var(--ink-dim); font-weight:600; font-size:12px;}
 .matchup .placeholder{color:var(--ink-dim); font-style:italic; font-weight:600;}
 .matchup .team-chip{display:inline-flex; align-items:center; gap:6px;}
 .schedule-table td:nth-child(3), .schedule-table th:nth-child(3),
@@ -253,6 +261,8 @@ tbody tr.roundhead td{background:var(--surface-2); font-weight:800; font-size:12
   }
   .schedule-table tbody tr.roundhead.ko{background:var(--accent-2);}
   .schedule-table tbody tr.roundhead td{background:transparent; color:#fff; font-size:11.5px; padding:0;}
+  .schedule-table tbody tr.roundhead.pause{background:var(--accent-2-soft); border:1px dashed var(--accent-2);}
+  .schedule-table tbody tr.roundhead.pause td{color:var(--accent-2);}
   .schedule-table tbody tr:first-child.roundhead{margin-top:0;}
 
   .schedule-table td{display:flex; align-items:center; padding:0; border:none; width:auto;}
@@ -262,7 +272,7 @@ tbody tr.roundhead td{background:var(--surface-2); font-weight:800; font-size:12
   .schedule-table td[data-label="Status"]{order:3; margin-left:auto;}
   .schedule-table td[data-label="Begegnung"]{order:4; flex:0 0 100%; margin-top:9px;}
   .schedule-table td[data-label="Resultat"]{order:5; flex:0 0 100%; justify-content:center; margin-top:6px;}
-  .schedule-table .matchup{justify-content:center; font-size:15px; min-width:0;}
+  .schedule-table .matchup{font-size:15px; min-width:0;}
   .schedule-table .score-inputs{justify-content:center;}
 
   /* standings: colored header band + tighter columns so all 9 fit without horizontal scroll */
@@ -335,6 +345,7 @@ var state = {
   matchDuration: 10,
   breakDuration: 3,
   breakBeforeKO: 5,
+  breakMidway: 10,
   playSemis: true,
   playFinal: true,
   playThird: true,
@@ -345,7 +356,11 @@ var state = {
 };
 
 var DEFAULT_TEAM_NAMES = ["Gelb","Blau","Gr\u00fcn","Durchsichtig","Orange","Schwarz","Weiss","Violett","Rot","T\u00fcrkis","Braun","Grau"];
-var COUNTRY_TEAM_NAMES = ["Schweden","Finnland","Schweiz","Tschechien","Norwegen","Lettland","Slowakei","Deutschland","Polen","D\u00e4nemark","Singapur","Japan"];
+var COUNTRY_TEAM_NAMES = [
+  "Schweden (Gelb)","Finnland (Blau)","Schweiz (Durchsichtig)","Tschechien (Gr\u00fcn)",
+  "Norwegen (Orange)","Lettland (Schwarz)","Slowakei (Weiss)","Deutschland (Violett)",
+  "Polen (Rot)","D\u00e4nemark (T\u00fcrkis)","Singapur (Braun)","Japan (Grau)"
+];
 function defaultName(i){
   var list = state.namingScheme === 'countries' ? COUNTRY_TEAM_NAMES : DEFAULT_TEAM_NAMES;
   return list[i] || ("Team " + (i+1));
@@ -595,6 +610,7 @@ function generateSchedule(){
 
   var slotOffset = matches.length ? (Math.max.apply(null, matches.map(function(m){return m.slotIndex;})) + 1) : 0;
   state._koStartSlot = slotOffset;
+  state._midBreakSlot = slotOffset >= 2 ? Math.floor(slotOffset / 2) : null;
 
   // knockout stage
   var koQueue = [];
@@ -684,16 +700,24 @@ function generateSchedule(){
 
 function computeTimeForSlot(slotIndex){
   var startMin = parseTime(state.start);
-  var extra = (state._koStartSlot!=null && slotIndex >= state._koStartSlot) ? state.breakBeforeKO : 0;
+  var extra = 0;
+  if(state._koStartSlot!=null && slotIndex >= state._koStartSlot) extra += state.breakBeforeKO;
+  if(state._midBreakSlot!=null && slotIndex >= state._midBreakSlot) extra += state.breakMidway;
   return startMin + slotIndex * (state.matchDuration + state.breakDuration) + extra;
+}
+
+function recomputeMatchTimes(){
+  state.matches.forEach(function(m){ m.time = computeTimeForSlot(m.slotIndex); });
 }
 
 function countSlots(){
   var built = generateSchedule();
-  if(!built.length) return {slots:0, koExtra:0};
+  if(!built.length) return {slots:0, extraFixed:0};
   var slots = Math.max.apply(null, built.map(function(m){return m.slotIndex;})) + 1;
-  var koExtra = (state._koStartSlot!=null && state._koStartSlot < slots) ? state.breakBeforeKO : 0;
-  return {slots:slots, koExtra:koExtra};
+  var extraFixed = 0;
+  if(state._koStartSlot!=null && state._koStartSlot < slots) extraFixed += state.breakBeforeKO;
+  if(state._midBreakSlot!=null && state._midBreakSlot < slots) extraFixed += state.breakMidway;
+  return {slots:slots, extraFixed:extraFixed};
 }
 
 // keeps state.matchDuration (mode "time") or is a no-op (mode "duration"); returns info for display
@@ -703,7 +727,7 @@ function syncScheduleTiming(){
   if(state.scheduleMode === 'time'){
     var totalMin = parseTime(state.end) - parseTime(state.start);
     if(slots < 1){ return {slots:slots, tooTight:false}; }
-    var raw = (totalMin - state.breakDuration * (slots-1) - counted.koExtra) / slots;
+    var raw = (totalMin - state.breakDuration * (slots-1) - counted.extraFixed) / slots;
     var duration = Math.max(1, Math.floor(raw));
     state.matchDuration = duration;
     return {slots:slots, tooTight: raw < 1};
@@ -817,7 +841,7 @@ var NAMED_TEAM_COLORS = {
   polen:'#C0392B', daenemark:'#1FA6A0', singapur:'#7A4B2A', japan:'#8A8F87'
 };
 function normalizeColorKey(s){
-  return (s+'').trim().toLowerCase()
+  return (s+'').replace(/\s*\([^)]*\)\s*$/,'').trim().toLowerCase()
     .replace(/ü/g,'ue').replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ß/g,'ss');
 }
 function teamDotStyle(name, fallback){
@@ -1133,8 +1157,17 @@ function renderOutput(){
   groupMatches.forEach(function(m){ if(!seenRoundNum[m.round]){ seenRoundNum[m.round]=true; orderedRoundNums.push(m.round); } });
   orderedRoundNums.sort(function(a,b){return a-b;});
 
+  var midBreakInserted = false;
   orderedRoundNums.forEach(function(rn){
     var rowsThisRound = groupMatches.filter(function(m){return m.round===rn;}).sort(function(a,b){return a.slotIndex-b.slotIndex || a.field-b.field;});
+    if(!midBreakInserted && state._midBreakSlot!=null && rowsThisRound.some(function(m){return m.slotIndex >= state._midBreakSlot;})){
+      html += '<tr class="roundhead pause"><td colspan="5">' +
+        '<div class="pause-row"><span>&#9200; Pause</span>' +
+        '<div class="stepper"><button id="midBreakDown">&ndash;</button><div class="val" id="midBreakVal">'+state.breakMidway+'</div><button id="midBreakUp">+</button></div>' +
+        '<span>Min.</span></div>' +
+        '</td></tr>';
+      midBreakInserted = true;
+    }
     html += '<tr class="roundhead"><td colspan="5">Gruppenphase &mdash; Runde '+rn+'</td></tr>';
     rowsThisRound.forEach(function(m){ html += matchRow(m, true, state.numGroups===2); });
   });
@@ -1178,6 +1211,7 @@ function renderOutput(){
 
   el.innerHTML = html;
   wireScoreInputs();
+  wireMidBreakStepper();
   syncShareLink();
 }
 
@@ -1243,6 +1277,19 @@ function wireScoreInputs(){
       if(fbAvailable && state.tournamentId) pushScoreForMatch(m); else syncShareLink();
     };
   });
+}
+
+function wireMidBreakStepper(){
+  var upBtn = document.getElementById('midBreakUp'), downBtn = document.getElementById('midBreakDown');
+  if(!upBtn) return;
+  function apply(newVal){
+    state.breakMidway = Math.max(5, Math.min(20, newVal));
+    recomputeMatchTimes();
+    renderOutput();
+    if(fbAvailable && state.tournamentId) persistNewTournament();
+  }
+  upBtn.onclick = function(){ apply(state.breakMidway + 1); };
+  downBtn.onclick = function(){ apply(state.breakMidway - 1); };
 }
 
 document.getElementById('year').textContent = new Date().getFullYear();
