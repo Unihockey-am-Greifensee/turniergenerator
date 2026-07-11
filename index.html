@@ -328,6 +328,7 @@ var state = {
   teamGroups: [],
   numGroups: 1,
   numFields: 2,
+  namingScheme: "colors",
   scheduleMode: "time",
   start: "17:15",
   end: "18:25",
@@ -344,7 +345,11 @@ var state = {
 };
 
 var DEFAULT_TEAM_NAMES = ["Gelb","Blau","Gr\u00fcn","Durchsichtig","Orange","Schwarz","Weiss","Violett","Rot","T\u00fcrkis","Braun","Grau"];
-function defaultName(i){ return DEFAULT_TEAM_NAMES[i] || ("Team " + (i+1)); }
+var COUNTRY_TEAM_NAMES = ["Schweden","Finnland","Schweiz","Tschechien","Norwegen","Lettland","Slowakei","Deutschland","Polen","D\u00e4nemark","Singapur","Japan"];
+function defaultName(i){
+  var list = state.namingScheme === 'countries' ? COUNTRY_TEAM_NAMES : DEFAULT_TEAM_NAMES;
+  return list[i] || ("Team " + (i+1));
+}
 
 function ensureTeamArrays(){
   var n = state.numTeams;
@@ -805,7 +810,11 @@ function groupColor(g){ return g==='A' ? 'var(--accent)' : 'var(--accent-2)'; }
 var NAMED_TEAM_COLORS = {
   gelb:'#E8C025', blau:'#2B6CB0', gruen:'#2F8A4E', durchsichtig:'transparent',
   orange:'#DD7A22', schwarz:'#20201E', weiss:'#FFFFFF', violett:'#7B4FA0',
-  rot:'#C0392B', tuerkis:'#1FA6A0', braun:'#7A4B2A', grau:'#8A8F87'
+  rot:'#C0392B', tuerkis:'#1FA6A0', braun:'#7A4B2A', grau:'#8A8F87',
+  /* Länder – den jeweils zugeordneten Farbton übernehmen */
+  schweden:'#E8C025', finnland:'#2B6CB0', schweiz:'transparent', tschechien:'#2F8A4E',
+  norwegen:'#DD7A22', lettland:'#20201E', slowakei:'#FFFFFF', deutschland:'#7B4FA0',
+  polen:'#C0392B', daenemark:'#1FA6A0', singapur:'#7A4B2A', japan:'#8A8F87'
 };
 function normalizeColorKey(s){
   return (s+'').trim().toLowerCase()
@@ -888,6 +897,12 @@ function renderSetup(){
           '</label>' +
         '</div>' +
       '</div>' +
+      '<label class="field" style="margin:14px 0 10px;">Vorbenennung' +
+        '<div class="choice-row" id="namingChoice">' +
+          '<div class="choice'+(state.namingScheme==='colors'?' active':'')+'" data-v="colors">Farben</div>' +
+          '<div class="choice'+(state.namingScheme==='countries'?' active':'')+'" data-v="countries">L&auml;nder</div>' +
+        '</div>' +
+      '</label>' +
       '<div class="teams-list" id="teamsList">'+teamRows+'</div>' +
     '</div>' +
 
@@ -948,6 +963,14 @@ function renderSetup(){
   });
   document.querySelectorAll('#fieldChoice .choice').forEach(function(c){
     c.onclick = function(){ state.numFields = parseInt(this.dataset.v,10); renderAll(); };
+  });
+  document.querySelectorAll('#namingChoice .choice').forEach(function(c){
+    c.onclick = function(){
+      state.namingScheme = this.dataset.v;
+      state.teamNames = [];
+      ensureTeamArrays();
+      renderAll();
+    };
   });
   document.querySelectorAll('.teamname').forEach(function(inp){
     inp.oninput = function(){
