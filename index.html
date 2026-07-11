@@ -192,8 +192,7 @@ tbody td{padding:10px 14px; border-bottom:1px solid var(--line); vertical-align:
 tbody tr:last-child td{border-bottom:none;}
 tbody tr.roundhead td{background:var(--surface-2); font-weight:800; font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-dim); padding:8px 14px;}
 tbody tr.roundhead.pause td{background:var(--accent-2-soft); color:var(--accent-2);}
-.pause-row{display:flex; align-items:center; justify-content:center; gap:10px; text-transform:none; letter-spacing:normal; font-size:13px;}
-.pause-row .stepper{background:var(--surface);}
+.pause-row{display:flex; align-items:center; justify-content:center; gap:10px; text-transform:none; letter-spacing:normal; font-size:13px; font-weight:800;}
 .time-cell{font-variant-numeric:tabular-nums; font-weight:700; white-space:nowrap;}
 .field-pill{
   display:inline-block; background:var(--surface-2); border:1px solid var(--line); border-radius:6px;
@@ -345,6 +344,7 @@ var state = {
   matchDuration: 10,
   breakDuration: 3,
   breakBeforeKO: 5,
+  midBreakEnabled: false,
   breakMidway: 10,
   playSemis: true,
   playFinal: true,
@@ -407,6 +407,7 @@ function buildConfigPayload(){
     numGroups:state.numGroups, numFields:state.numFields, scheduleMode:state.scheduleMode,
     start:state.start, end:state.end, matchDuration:state.matchDuration,
     breakDuration:state.breakDuration, breakBeforeKO:state.breakBeforeKO,
+    midBreakEnabled:state.midBreakEnabled, breakMidway:state.breakMidway,
     playSemis:state.playSemis, playFinal:state.playFinal, playThird:state.playThird,
     matches:matches
   };
@@ -457,6 +458,7 @@ function loadTournamentFromFirebase(id){
     state.numGroups=cfg.numGroups; state.numFields=cfg.numFields; state.scheduleMode=cfg.scheduleMode;
     state.start=cfg.start; state.end=cfg.end; state.matchDuration=cfg.matchDuration;
     state.breakDuration=cfg.breakDuration; state.breakBeforeKO=cfg.breakBeforeKO;
+    state.midBreakEnabled=!!cfg.midBreakEnabled; state.breakMidway=cfg.breakMidway||10;
     state.playSemis=cfg.playSemis; state.playFinal=cfg.playFinal; state.playThird=cfg.playThird;
     state.matches = (cfg.matches||[]).map(function(m){ m.homeScore=null; m.awayScore=null; m.penaltyWinner=null; return m; });
     state.generated = true;
@@ -511,6 +513,7 @@ function tryLoadFromHash(){
     state.numGroups=data.numGroups; state.numFields=data.numFields; state.scheduleMode=data.scheduleMode;
     state.start=data.start; state.end=data.end; state.matchDuration=data.matchDuration;
     state.breakDuration=data.breakDuration; state.breakBeforeKO=data.breakBeforeKO;
+    state.midBreakEnabled=!!data.midBreakEnabled; state.breakMidway=data.breakMidway||10;
     state.playSemis=data.playSemis; state.playFinal=data.playFinal; state.playThird=data.playThird;
     state.generated=data.generated; state.matches=data.matches||[];
     state.editing=false;
@@ -702,12 +705,8 @@ function computeTimeForSlot(slotIndex){
   var startMin = parseTime(state.start);
   var extra = 0;
   if(state._koStartSlot!=null && slotIndex >= state._koStartSlot) extra += state.breakBeforeKO;
-  if(state._midBreakSlot!=null && slotIndex >= state._midBreakSlot) extra += state.breakMidway;
+  if(state.midBreakEnabled && state._midBreakSlot!=null && slotIndex >= state._midBreakSlot) extra += state.breakMidway;
   return startMin + slotIndex * (state.matchDuration + state.breakDuration) + extra;
-}
-
-function recomputeMatchTimes(){
-  state.matches.forEach(function(m){ m.time = computeTimeForSlot(m.slotIndex); });
 }
 
 function countSlots(){
@@ -716,7 +715,7 @@ function countSlots(){
   var slots = Math.max.apply(null, built.map(function(m){return m.slotIndex;})) + 1;
   var extraFixed = 0;
   if(state._koStartSlot!=null && state._koStartSlot < slots) extraFixed += state.breakBeforeKO;
-  if(state._midBreakSlot!=null && state._midBreakSlot < slots) extraFixed += state.breakMidway;
+  if(state.midBreakEnabled && state._midBreakSlot!=null && state._midBreakSlot < slots) extraFixed += state.breakMidway;
   return {slots:slots, extraFixed:extraFixed};
 }
 
@@ -952,6 +951,14 @@ function renderSetup(){
       '</div>' +
       '<p style="font-size:13px; color:var(--ink-dim); margin:14px 2px 0;">'+timingInfo+'</p>' +
       timingWarn +
+      '<div class="check-row" style="margin-top:10px;">' +
+        '<div><div class="label">Zus&auml;tzliche Pause einplanen</div><div class="hint">Z.B. Mittagspause &mdash; wird ungef&auml;hr in der Turniermitte eingeplant</div></div>' +
+        '<label class="switch"><input type="checkbox" id="chkMidBreak" '+(state.midBreakEnabled?'checked':'')+'><span class="track"></span><span class="knob"></span></label>' +
+      '</div>' +
+      '<div class="check-row subcheck'+(state.midBreakEnabled?'':' disabled')+'">' +
+        '<div><div class="label">Dauer der Pause</div></div>' +
+        '<div class="stepper"><button id="midBreakDown" '+(state.midBreakEnabled?'':'disabled')+'>&ndash;</button><div class="val" id="midBreakVal">'+state.breakMidway+'</div><button id="midBreakUp" '+(state.midBreakEnabled?'':'disabled')+'>+</button></div>' +
+      '</div>' +
     '</div>' +
 
     '<div class="card">' +
@@ -1021,6 +1028,9 @@ function renderSetup(){
   document.getElementById('chkThird').onchange = function(){ state.playThird = this.checked; renderAll(); };
   document.getElementById('koBreakUp').onclick = function(){ state.breakBeforeKO = Math.min(60, state.breakBeforeKO+1); renderAll(); };
   document.getElementById('koBreakDown').onclick = function(){ state.breakBeforeKO = Math.max(0, state.breakBeforeKO-1); renderAll(); };
+  document.getElementById('chkMidBreak').onchange = function(){ state.midBreakEnabled = this.checked; renderAll(); };
+  document.getElementById('midBreakUp').onclick = function(){ state.breakMidway = Math.min(20, state.breakMidway+1); renderAll(); };
+  document.getElementById('midBreakDown').onclick = function(){ state.breakMidway = Math.max(5, state.breakMidway-1); renderAll(); };
   document.getElementById('genBtn').onclick = function(){
     state.matches = generateSchedule();
     state.generated = true;
@@ -1136,6 +1146,7 @@ function renderOutput(){
     '<div class="tb-item"><span class="tb-k">Spieldauer</span><span class="tb-v">'+state.matchDuration+'<small>Min.</small></span></div>' +
     '<div class="tb-item"><span class="tb-k">Pause</span><span class="tb-v">'+state.breakDuration+'<small>Min.</small></span></div>' +
     (state.breakBeforeKO>0 ? '<div class="tb-item"><span class="tb-k">Pause vor Finalrunde</span><span class="tb-v">'+state.breakBeforeKO+'<small>Min.</small></span></div>' : '') +
+    (state.midBreakEnabled ? '<div class="tb-item"><span class="tb-k">Zus&auml;tzliche Pause</span><span class="tb-v">'+state.breakMidway+'<small>Min.</small></span></div>' : '') +
     '</div>';
   html += '<div class="tablewrap"><table class="schedule-table"><thead><tr><th>Zeit</th><th>Feld</th><th>Begegnung</th><th>Resultat</th><th>Status</th></tr></thead><tbody>';
 
@@ -1160,11 +1171,9 @@ function renderOutput(){
   var midBreakInserted = false;
   orderedRoundNums.forEach(function(rn){
     var rowsThisRound = groupMatches.filter(function(m){return m.round===rn;}).sort(function(a,b){return a.slotIndex-b.slotIndex || a.field-b.field;});
-    if(!midBreakInserted && state._midBreakSlot!=null && rowsThisRound.some(function(m){return m.slotIndex >= state._midBreakSlot;})){
+    if(!midBreakInserted && state.midBreakEnabled && state._midBreakSlot!=null && rowsThisRound.some(function(m){return m.slotIndex >= state._midBreakSlot;})){
       html += '<tr class="roundhead pause"><td colspan="5">' +
-        '<div class="pause-row"><span>&#9200; Pause</span>' +
-        '<div class="stepper"><button id="midBreakDown">&ndash;</button><div class="val" id="midBreakVal">'+state.breakMidway+'</div><button id="midBreakUp">+</button></div>' +
-        '<span>Min.</span></div>' +
+        '<div class="pause-row">&#9200; Pause &middot; '+state.breakMidway+' Min.</div>' +
         '</td></tr>';
       midBreakInserted = true;
     }
@@ -1211,7 +1220,6 @@ function renderOutput(){
 
   el.innerHTML = html;
   wireScoreInputs();
-  wireMidBreakStepper();
   syncShareLink();
 }
 
@@ -1277,19 +1285,6 @@ function wireScoreInputs(){
       if(fbAvailable && state.tournamentId) pushScoreForMatch(m); else syncShareLink();
     };
   });
-}
-
-function wireMidBreakStepper(){
-  var upBtn = document.getElementById('midBreakUp'), downBtn = document.getElementById('midBreakDown');
-  if(!upBtn) return;
-  function apply(newVal){
-    state.breakMidway = Math.max(5, Math.min(20, newVal));
-    recomputeMatchTimes();
-    renderOutput();
-    if(fbAvailable && state.tournamentId) persistNewTournament();
-  }
-  upBtn.onclick = function(){ apply(state.breakMidway + 1); };
-  downBtn.onclick = function(){ apply(state.breakMidway - 1); };
 }
 
 document.getElementById('year').textContent = new Date().getFullYear();
