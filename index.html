@@ -195,11 +195,10 @@ tbody tr.roundhead.pause td{background:var(--accent-2-soft); color:var(--accent-
 .tiebreak{display:flex; align-items:center; gap:6px; margin-top:4px;}
 .tiebreak select{font-size:11.5px; padding:3px 6px; border-radius:6px; border:1px solid var(--accent-2); background:var(--accent-2-soft); color:var(--ink); font-weight:700;}
 
-.standings-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
-@media (max-width:700px){ .standings-grid{grid-template-columns:1fr;} }
-.standings-grid table td, .standings-grid table th{padding:9px 10px;}
-.standings-grid table td.team{font-weight:800;}
-.standings-grid table td.num, .standings-grid table th.num{text-align:center; font-variant-numeric:tabular-nums;}
+.standings-col table td, .standings-col table th{padding:9px 10px;}
+.standings-col table td.team{font-weight:800;}
+.standings-col table td.num, .standings-col table th.num{text-align:center; font-variant-numeric:tabular-nums;}
+.top-grid .section-title, .info-panel .section-title{margin-top:0;}
 
 .app-bar{
   display:none;
@@ -212,7 +211,6 @@ tbody tr.roundhead.pause td{background:var(--accent-2-soft); color:var(--accent-
 
 @media (max-width:640px){
   .app-bar{display:flex;}
-  .eyebrow, h1, .sub{display:none;}
 
   /* schedule: reflow the table into a stack of compact, touch-friendly match cards */
   .schedule-table thead{display:none;}
@@ -246,10 +244,11 @@ tbody tr.roundhead.pause td{background:var(--accent-2-soft); color:var(--accent-
   .schedule-table .score-inputs{justify-content:center;}
 
   /* standings: colored header band + tighter columns so all 9 fit without horizontal scroll */
-  .standings-grid table thead:last-of-type tr{background:var(--bar-dark);}
-  .standings-grid table thead:last-of-type tr th{color:#fff;}
-  .standings-grid table td, .standings-grid table th{padding:8px 5px; font-size:12.5px;}
-  .standings-grid table td.team{font-size:13px;}
+  .standings-col table thead:last-of-type tr{background:var(--bar-dark);}
+  .standings-col table thead:last-of-type tr th{color:#fff;}
+  .standings-col table td, .standings-col table th{padding:8px 5px; font-size:12.5px;}
+  .standings-col table td.team{font-size:13px;}
+  .info-grid{grid-template-columns:1fr 1fr;}
 
   .stepper button{width:38px; height:38px;}
   .score-inputs input{width:40px; padding:9px 2px;}
@@ -271,6 +270,28 @@ tr.qualified td.team .rankbadge{background:var(--accent-soft); color:var(--accen
 .edit-link{background:none; border:none; color:var(--accent-ink); font-weight:700; font-size:13px; cursor:pointer; padding:0;}
 .edit-link:hover{text-decoration:underline;}
 
+.header-row{display:flex; align-items:flex-start; justify-content:space-between; gap:16px;}
+.header-row .head-text{min-width:0;}
+.gear-btn{
+  appearance:none; flex:none; width:46px; height:46px; border-radius:11px;
+  border:2px solid var(--ink); background:var(--surface); color:var(--ink);
+  font-size:22px; line-height:1; cursor:pointer; display:inline-flex; align-items:center; justify-content:center;
+  transition:background .12s, transform .12s;
+}
+.gear-btn:hover{ background:var(--accent-soft); }
+.gear-btn:active{ transform:scale(.94); }
+.gear-btn:focus-visible{ outline:3px solid var(--accent); outline-offset:2px; }
+.app-bar .gear-btn{ margin-left:auto; width:36px; height:36px; font-size:18px; background:transparent; border-color:rgba(255,255,255,.4); color:#fff; }
+.app-bar .gear-btn:hover{ background:rgba(255,255,255,.14); }
+
+.top-grid{display:grid; grid-template-columns:1fr; gap:20px; align-items:start; margin-bottom:8px;}
+@media (min-width:760px){ .top-grid{grid-template-columns:1.5fr 1fr;} }
+.standings-col{display:flex; flex-direction:column; gap:14px;}
+.info-panel{ background:var(--surface); border:2px solid var(--ink); border-radius:12px; padding:16px 18px; }
+.info-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px 18px;}
+.info-grid .status-pill{grid-column:1 / -1; justify-self:start;}
+@media (max-width:640px){ .header-row{display:none;} }
+
 @media (prefers-reduced-motion: reduce){ *{transition:none !important;} }
 
 .footer{
@@ -284,10 +305,15 @@ tr.qualified td.team .rankbadge{background:var(--accent-soft); color:var(--accen
 </style>
 
 <div class="wrap">
-  <div class="app-bar"><span class="cup">&#127942;</span><span class="name">Turniergenerator</span><span class="tag">Spielplan &amp; Rangliste</span></div>
-  <p class="eyebrow">Spielplan &amp; Rangliste</p>
-  <h1>Turniergenerator</h1>
-  <p class="sub">Rahmenbedingungen festlegen, Spielplan erzeugen, Resultate eintragen &mdash; die Rangliste aktualisiert sich live.</p>
+  <div class="app-bar"><span class="cup">&#127942;</span><span class="name">Turniergenerator</span><button class="gear-btn" id="gearBtnMobile" type="button" title="Einstellungen bearbeiten" aria-label="Einstellungen bearbeiten">&#9881;</button></div>
+  <div class="header-row">
+    <div class="head-text">
+      <p class="eyebrow">Spielplan &amp; Rangliste</p>
+      <h1>Turniergenerator</h1>
+      <p class="sub">Rahmenbedingungen festlegen, Spielplan erzeugen, Resultate eintragen &mdash; die Rangliste aktualisiert sich live.</p>
+    </div>
+    <button class="gear-btn" id="gearBtn" type="button" title="Einstellungen bearbeiten" aria-label="Einstellungen bearbeiten">&#9881;</button>
+  </div>
 
   <div id="setup"></div>
   <div id="summary"></div>
@@ -789,14 +815,18 @@ function resolveRef(ref){
 function renderAll(){
   ensureTeamArrays();
   renderSetup();
+  document.getElementById('summary').innerHTML = '';
   if(state.generated){
     refreshStandings();
-    renderSummary();
     renderOutput();
   } else {
-    document.getElementById('summary').innerHTML = '';
     document.getElementById('output').innerHTML = '';
   }
+  var showGear = state.generated && !state.editing;
+  ['gearBtn','gearBtnMobile'].forEach(function(id){
+    var b = document.getElementById(id);
+    if(b) b.style.display = showGear ? '' : 'none';
+  });
 }
 
 function groupColor(g){ return g==='A' ? 'var(--accent)' : 'var(--accent-2)'; }
@@ -826,16 +856,7 @@ function teamDotStyle(name, fallback){
 function renderSetup(){
   var el = document.getElementById('setup');
   if(!state.editing){
-    el.innerHTML =
-      '<div class="summarybar">' +
-        '<div class="stat"><div class="k">Teams</div><div class="v">'+state.numTeams+'</div></div>' +
-        '<div class="stat"><div class="k">Gruppen</div><div class="v">'+state.numGroups+'</div></div>' +
-        '<div class="stat"><div class="k">Spielfelder</div><div class="v">'+state.numFields+'</div></div>' +
-        '<div class="stat"><div class="k">Zeitplan</div><div class="v">'+(state.scheduleMode==='time' ? state.start+'&ndash;'+state.end : state.start+' + '+state.matchDuration+' Min./Spiel')+'</div></div>' +
-        '<div class="spacer"></div>' +
-        '<button class="edit-link" id="editBtn">Einstellungen bearbeiten</button>' +
-      '</div>';
-    document.getElementById('editBtn').onclick = function(){ state.editing = true; renderAll(); };
+    el.innerHTML = '';
     return;
   }
 
@@ -1029,19 +1050,23 @@ function estimateEnd(matches){
   return lastStart + state.matchDuration;
 }
 
-function renderSummary(){
-  var el = document.getElementById('summary');
+function planInfoHtml(){
   var endEstimate = estimateEnd(state.matches);
   var overtime = endEstimate!=null && endEstimate > parseTime(state.end);
   var totalMatches = state.matches.length;
-  el.innerHTML =
-    '<div class="summarybar">' +
+  return '<div class="info-panel">' +
+    '<div class="section-title">Angaben zum Turnier</div>' +
+    '<div class="info-grid">' +
+      '<div class="stat"><div class="k">Teams</div><div class="v">'+state.numTeams+'</div></div>' +
+      '<div class="stat"><div class="k">Gruppen</div><div class="v">'+state.numGroups+'</div></div>' +
+      '<div class="stat"><div class="k">Spielfelder</div><div class="v">'+state.numFields+'</div></div>' +
+      '<div class="stat"><div class="k">Zeitplan</div><div class="v">'+(state.scheduleMode==='time' ? state.start+'&ndash;'+state.end : state.start+' + '+state.matchDuration+' Min./Spiel')+'</div></div>' +
       '<div class="stat"><div class="k">Spiele total</div><div class="v">'+totalMatches+'</div></div>' +
       '<div class="stat"><div class="k">'+(state.scheduleMode==='time'?'Letztes Spiel endet':'Turnierende (ca.)')+'</div><div class="v">'+(endEstimate!=null?formatTime(endEstimate):'&ndash;')+'</div></div>' +
       (state.scheduleMode==='time' ? '<div class="stat"><div class="k">Geplantes Ende</div><div class="v">'+state.end+'</div></div>' : '<div class="stat"><div class="k">Spieldauer</div><div class="v">'+state.matchDuration+' Min.</div></div>') +
-      '<div class="spacer"></div>' +
       (state.scheduleMode==='time' ? (overtime ? '<div class="status-pill wait">L&auml;uft &uuml;ber Endzeit</div>' : '<div class="status-pill done">Im Zeitplan</div>') : '') +
-    '</div>';
+    '</div>' +
+  '</div>';
 }
 
 function teamDotHtml(t){
@@ -1082,6 +1107,31 @@ function scoreInputsHtml(m, canPlay){
 function renderOutput(){
   var el = document.getElementById('output');
   var html = '';
+
+  // champion (full width, top)
+  var finalMatch = state.matches.filter(function(m){return m.type==='final';})[0];
+  if(finalMatch && finalMatch.homeScore!=null && finalMatch.awayScore!=null){
+    var winnerRef = resolveRef({t:'winner', matchId: finalMatch.id});
+    if(winnerRef.resolved){
+      html += '<div class="champion-banner"><span class="cup">&#127942;</span><div class="name">'+esc(winnerRef.name)+'</div><div class="cap">Turniersieger</div></div>';
+    }
+  }
+
+  // top region: Rangliste (links) + Angaben zum Turnier (rechts)
+  var qualifyPerGroup;
+  if(state.numGroups===2){ qualifyPerGroup = state.playSemis ? 2 : (state.playFinal ? 1 : 0); }
+  else { qualifyPerGroup = state.playSemis ? 4 : (state.playThird ? 4 : (state.playFinal ? 2 : 0)); }
+  var standingsInner = '';
+  if(state.numGroups===1){
+    standingsInner += standingsTable('A', null, qualifyPerGroup);
+  } else {
+    standingsInner += standingsTable('A', 'Gruppe A', qualifyPerGroup);
+    standingsInner += standingsTable('B', 'Gruppe B', qualifyPerGroup);
+  }
+  html += '<div class="top-grid">' +
+      '<div class="standings-col"><div class="section-title">Rangliste</div>'+standingsInner+'</div>' +
+      planInfoHtml() +
+    '</div>';
 
   // Schedule
   html += '<div class="section-title">Spielplan</div>';
@@ -1147,29 +1197,6 @@ function renderOutput(){
       '<button class="btn ghost" id="copyLinkBtn">&#128279; Link kopieren</button>' +
       '<button class="btn whatsapp" id="waShareBtn">&#128242; Per WhatsApp teilen</button>' +
     '</div>';
-
-  // Standings
-  html += '<div class="section-title">Rangliste</div>';
-  html += '<div class="standings-grid">';
-  var qualifyPerGroup;
-  if(state.numGroups===2){ qualifyPerGroup = state.playSemis ? 2 : (state.playFinal ? 1 : 0); }
-  else { qualifyPerGroup = state.playSemis ? 4 : (state.playThird ? 4 : (state.playFinal ? 2 : 0)); }
-  if(state.numGroups===1){
-    html += standingsTable('A', null, qualifyPerGroup);
-  } else {
-    html += standingsTable('A', 'Gruppe A', qualifyPerGroup);
-    html += standingsTable('B', 'Gruppe B', qualifyPerGroup);
-  }
-  html += '</div>';
-
-  // champion
-  var finalMatch = state.matches.filter(function(m){return m.type==='final';})[0];
-  if(finalMatch && finalMatch.homeScore!=null && finalMatch.awayScore!=null){
-    var winnerRef = resolveRef({t:'winner', matchId: finalMatch.id});
-    if(winnerRef.resolved){
-      html += '<div class="champion-banner"><span class="cup">&#127942;</span><div class="name">'+esc(winnerRef.name)+'</div><div class="cap">Turniersieger</div></div>';
-    }
-  }
 
   el.innerHTML = html;
   wireScoreInputs();
@@ -1259,6 +1286,11 @@ function wireScoreInputs(){
 }
 
 document.getElementById('year').textContent = new Date().getFullYear();
+
+['gearBtn','gearBtnMobile'].forEach(function(id){
+  var b = document.getElementById(id);
+  if(b) b.onclick = function(){ state.editing = true; renderAll(); window.scrollTo(0,0); };
+});
 
 var initialTournamentId = getQueryParam('t');
 if(initialTournamentId && fbAvailable){
