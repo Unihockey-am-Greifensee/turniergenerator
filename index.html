@@ -329,6 +329,7 @@ tr.qualified td.team .rankbadge{background:var(--accent-soft); color:var(--accen
 
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
 <script>
 (function(){
 
@@ -385,11 +386,19 @@ var FIREBASE_CONFIG = {
   projectId: "turniergenerator-87b1f"
 };
 var fbDb = null, fbAvailable = false;
+// resolves to true once the anonymous sign-in succeeded, false if Firebase is
+// unreachable (offline / sandboxed preview) so the app falls back to hash sharing
+var fbReady = Promise.resolve(false);
 try{
   if(typeof firebase !== 'undefined'){
     firebase.initializeApp(FIREBASE_CONFIG);
     fbDb = firebase.database();
     fbAvailable = true;
+    // sign every visitor in silently (no visible login) so the database rules can
+    // require an authenticated user instead of being world-writable
+    fbReady = firebase.auth().signInAnonymously()
+      .then(function(){ return true; })
+      .catch(function(){ fbAvailable = false; return false; });
   }
 } catch(e){ fbAvailable = false; }
 
@@ -1035,10 +1044,13 @@ function renderSetup(){
     if(fbAvailable){
       var isNew = !state.tournamentId;
       if(isNew) state.tournamentId = genTournamentId();
-      var clearOldScores = isNew ? Promise.resolve() : fbDb.ref('tournaments/'+state.tournamentId+'/scores').remove();
-      clearOldScores.then(persistNewTournament).then(function(){
-        history.replaceState(null, '', '?t='+state.tournamentId);
-        attachLiveListeners(state.tournamentId);
+      fbReady.then(function(ok){
+        if(!ok) return;
+        var clearOldScores = isNew ? Promise.resolve() : fbDb.ref('tournaments/'+state.tournamentId+'/scores').remove();
+        clearOldScores.then(persistNewTournament).then(function(){
+          history.replaceState(null, '', '?t='+state.tournamentId);
+          attachLiveListeners(state.tournamentId);
+        });
       });
     } else {
       state.tournamentId = null;
@@ -1301,10 +1313,19 @@ document.getElementById('year').textContent = new Date().getFullYear();
 var initialTournamentId = getQueryParam('t');
 if(initialTournamentId && fbAvailable){
   state.tournamentId = initialTournamentId;
-  loadTournamentFromFirebase(initialTournamentId).catch(function(){
-    tryLoadFromHash();
-    ensureTeamArrays();
-    renderAll();
+  // wait for the anonymous sign-in before reading (rules now require auth)
+  fbReady.then(function(ok){
+    if(ok){
+      loadTournamentFromFirebase(initialTournamentId).catch(function(){
+        tryLoadFromHash();
+        ensureTeamArrays();
+        renderAll();
+      });
+    } else {
+      tryLoadFromHash();
+      ensureTeamArrays();
+      renderAll();
+    }
   });
 } else {
   tryLoadFromHash();
