@@ -271,19 +271,19 @@ tr.qualified td.team .rankbadge{background:var(--accent-soft); color:var(--accen
 .edit-link{background:none; border:none; color:var(--accent-ink); font-weight:700; font-size:13px; cursor:pointer; padding:0;}
 .edit-link:hover{text-decoration:underline;}
 
-.header-row{display:flex; align-items:flex-start; justify-content:space-between; gap:16px;}
-.header-row .head-text{min-width:0;}
+.header-row{display:flex; align-items:center; justify-content:flex-start; gap:18px;}
+.header-row .head-text{min-width:0; flex:1;}
 .site-logo{width:52px; height:52px; flex:none;}
 .gear-btn{
-  appearance:none; flex:none; width:46px; height:46px; border-radius:11px;
+  appearance:none; flex:none; width:54px; height:54px; border-radius:14px;
   border:2px solid var(--ink); background:var(--surface); color:var(--ink);
-  font-size:22px; line-height:1; cursor:pointer; display:inline-flex; align-items:center; justify-content:center;
+  font-size:30px; line-height:1; cursor:pointer; display:inline-flex; align-items:center; justify-content:center;
   transition:background .12s, transform .12s;
 }
 .gear-btn:hover{ background:var(--accent-soft); }
 .gear-btn:active{ transform:scale(.94); }
 .gear-btn:focus-visible{ outline:3px solid var(--accent); outline-offset:2px; }
-.app-bar .gear-btn{ margin-left:auto; width:36px; height:36px; font-size:18px; background:transparent; border-color:rgba(255,255,255,.4); color:#fff; }
+.app-bar .gear-btn{ margin-left:auto; width:42px; height:42px; font-size:22px; background:transparent; border-color:rgba(255,255,255,.4); color:#fff; }
 .app-bar .gear-btn:hover{ background:rgba(255,255,255,.14); }
 
 .top-grid{display:grid; grid-template-columns:1fr; gap:20px; align-items:start; margin-bottom:8px;}
@@ -309,15 +309,13 @@ tr.qualified td.team .rankbadge{background:var(--accent-soft); color:var(--accen
 <div class="wrap">
   <div class="app-bar"><span class="cup">&#127942;</span><span class="name">Turniergenerator</span><button class="gear-btn" id="gearBtnMobile" type="button" title="Einstellungen bearbeiten" aria-label="Einstellungen bearbeiten">&#9881;</button></div>
   <div class="header-row">
+    <img class="site-logo" src="Grizzlys_512x512.png" alt="Grizzlys Logo" onerror="this.style.display='none'">
     <div class="head-text">
       <p class="eyebrow">Spielplan &amp; Rangliste</p>
       <h1>Turniergenerator</h1>
       <p class="sub">Rahmenbedingungen festlegen, Spielplan erzeugen, Resultate eintragen &mdash; die Rangliste aktualisiert sich live.</p>
     </div>
-    <div style="display:flex; gap:12px; align-items:flex-start;">
-      <img class="site-logo" src="Grizzlys_512x512.png" alt="Grizzlys Logo" onerror="this.style.display='none'">
-      <button class="gear-btn" id="gearBtn" type="button" title="Einstellungen bearbeiten" aria-label="Einstellungen bearbeiten">&#9881;</button>
-    </div>
+    <button class="gear-btn" id="gearBtn" type="button" title="Einstellungen bearbeiten" aria-label="Einstellungen bearbeiten">&#9881;</button>
   </div>
 
   <div id="setup"></div>
