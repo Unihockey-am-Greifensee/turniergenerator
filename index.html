@@ -1,3 +1,4 @@
+<meta charset="UTF-8">
 <title>Turniergenerator</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
@@ -272,6 +273,7 @@ tr.qualified td.team .rankbadge{background:var(--accent-soft); color:var(--accen
 
 .header-row{display:flex; align-items:flex-start; justify-content:space-between; gap:16px;}
 .header-row .head-text{min-width:0;}
+.site-logo{width:52px; height:52px; flex:none;}
 .gear-btn{
   appearance:none; flex:none; width:46px; height:46px; border-radius:11px;
   border:2px solid var(--ink); background:var(--surface); color:var(--ink);
@@ -312,7 +314,10 @@ tr.qualified td.team .rankbadge{background:var(--accent-soft); color:var(--accen
       <h1>Turniergenerator</h1>
       <p class="sub">Rahmenbedingungen festlegen, Spielplan erzeugen, Resultate eintragen &mdash; die Rangliste aktualisiert sich live.</p>
     </div>
-    <button class="gear-btn" id="gearBtn" type="button" title="Einstellungen bearbeiten" aria-label="Einstellungen bearbeiten">&#9881;</button>
+    <div style="display:flex; gap:12px; align-items:flex-start;">
+      <img class="site-logo" src="Grizzlys_512x512.png" alt="Grizzlys Logo" onerror="this.style.display='none'">
+      <button class="gear-btn" id="gearBtn" type="button" title="Einstellungen bearbeiten" aria-label="Einstellungen bearbeiten">&#9881;</button>
+    </div>
   </div>
 
   <div id="setup"></div>
